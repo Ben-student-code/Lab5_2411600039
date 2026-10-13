@@ -6,6 +6,10 @@
  *  - No localStorage auth check (Laravel middleware handles it)
  *  - Logout handled by form POST to route('logout')
  *  - Real-time simulation REMOVED
+ *  - Add Workout modal REMOVED (moved to /inventory)
+ *  - Filters moved to /inventory
+ *  - Live indicator REMOVED
+ *  - Failed workout alert changed to compact clickable chip
  */
 
 class Dashboard {
@@ -31,12 +35,7 @@ class Dashboard {
         this.renderAlerts();
         this.renderCharts();
         this.updateTable();
-        this.setupEventListeners();
-        this.setupAddWorkoutModal();
         this.setupExport();
-
-        // Update live indicator
-        this.updateLiveIndicator('Live', true);
     }
 
     /**
@@ -54,22 +53,6 @@ class Dashboard {
         else timeOfDay = 'Good Night';
 
         greetingElement.textContent = `${timeOfDay}, ${username}!`;
-    }
-
-    /**
-     * Update live indicator
-     */
-    updateLiveIndicator(message = 'Live', isActive = true) {
-        const indicator = document.getElementById('liveIndicator');
-        if (!indicator) return;
-
-        if (isActive) {
-            indicator.className = 'badge bg-success me-2';
-            indicator.innerHTML = `<i class="bi bi-circle-fill"></i> ${message}`;
-        } else {
-            indicator.className = 'badge bg-secondary me-2';
-            indicator.innerHTML = `<i class="bi bi-circle"></i> ${message}`;
-        }
     }
 
     /**
@@ -95,7 +78,8 @@ class Dashboard {
     }
 
     /**
-     * Render alerts for failed workouts
+     * Render a compact clickable chip for failed workouts.
+     * Clicking → navigates to /notifications for full details.
      */
     renderAlerts() {
         const container = document.getElementById('alertContainer');
@@ -103,43 +87,33 @@ class Dashboard {
 
         const failedWorkouts = this.dataManager.getFailedWorkouts();
 
+        // No failures → hide the alert area completely
         if (failedWorkouts.length === 0) {
-            container.innerHTML = `
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle-fill"></i> 
-                    All workouts are on track! No failed workouts to report.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
+            container.innerHTML = '';
+            container.style.display = 'none';
             return;
         }
 
-        let alertHtml = `
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Attention Required!</h5>
-                <p>The following workouts need review:</p>
-                <ul class="mb-0">
+        container.style.display = 'block';
+
+        const count = failedWorkouts.length;
+        const latest = failedWorkouts[0];
+
+        container.innerHTML = `
+            <a href="/notifications"
+               class="d-inline-flex align-items-center gap-2 text-decoration-none px-3 py-2 rounded-pill shadow-sm"
+               style="background:#fff4e5;border:1px solid #ffd699;color:#8a6100;transition:all 0.2s ease;"
+               onmouseover="this.style.background='#ffe4b3'"
+               onmouseout="this.style.background='#fff4e5'">
+                <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                <span class="fw-semibold">
+                    ${count} Failed Workout${count > 1 ? 's' : ''}
+                </span>
+                <span class="text-muted small">· ${latest.activity}</span>
+                <i class="bi bi-arrow-right-short fs-5"></i>
+                <small class="text-muted ms-1">View All</small>
+            </a>
         `;
-
-        failedWorkouts.forEach(w => {
-            alertHtml += `
-                <li>
-                    <strong>${w.activity}</strong> - ${w.date} 
-                    <span class="badge bg-danger">Failed</span>
-                    ${w.notes ? `(${w.notes})` : ''}
-                </li>
-            `;
-        });
-
-        alertHtml += `
-                </ul>
-                <hr>
-                <p class="mb-0">Please review and adjust your workout plan accordingly.</p>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-
-        container.innerHTML = alertHtml;
     }
 
     /**
@@ -461,9 +435,9 @@ class Dashboard {
         if (workouts.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">
+                    <td colspan="7" class="text-center text-muted py-4">
                         <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                        No workouts found matching your filters
+                        No workouts found
                     </td>
                 </tr>
             `;
@@ -500,177 +474,10 @@ class Dashboard {
                 <td><span class="badge ${status.class}">${status.text}</span></td>
                 <td>${activity.calories}</td>
                 <td>${activity.duration} min</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-danger"
-                            onclick="dashboard.deleteWorkout(${activity.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
             `;
 
             tableBody.appendChild(row);
         });
-    }
-
-    /**
-     * Setup event listeners for filters and interactions
-     */
-    setupEventListeners() {
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.dataManager.filters.search = e.target.value;
-                this.applyFiltersAndUpdate();
-            });
-        }
-
-        const typeFilter = document.getElementById('typeFilter');
-        if (typeFilter) {
-            typeFilter.addEventListener('change', (e) => {
-                this.dataManager.filters.type = e.target.value;
-                this.applyFiltersAndUpdate();
-            });
-        }
-
-        const intensityFilter = document.getElementById('intensityFilter');
-        if (intensityFilter) {
-            intensityFilter.addEventListener('change', (e) => {
-                this.dataManager.filters.intensity = e.target.value;
-                this.applyFiltersAndUpdate();
-            });
-        }
-
-        const statusFilter = document.getElementById('statusFilter');
-        if (statusFilter) {
-            statusFilter.addEventListener('change', (e) => {
-                this.dataManager.filters.status = e.target.value;
-                this.applyFiltersAndUpdate();
-            });
-        }
-
-        const dateRangeFilter = document.getElementById('dateRangeFilter');
-        if (dateRangeFilter) {
-            dateRangeFilter.addEventListener('change', (e) => {
-                this.dataManager.filters.dateRange = e.target.value;
-                this.applyFiltersAndUpdate();
-            });
-        }
-
-        const resetBtn = document.getElementById('resetFiltersBtn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                document.getElementById('searchInput').value = '';
-                document.getElementById('typeFilter').value = 'all';
-                document.getElementById('intensityFilter').value = 'all';
-                document.getElementById('statusFilter').value = 'all';
-                document.getElementById('dateRangeFilter').value = 'all';
-
-                this.dataManager.filters = {
-                    search: '',
-                    type: 'all',
-                    intensity: 'all',
-                    status: 'all',
-                    dateRange: 'all'
-                };
-
-                this.applyFiltersAndUpdate();
-            });
-        }
-    }
-
-    /**
-     * Setup the Add Workout modal
-     */
-    setupAddWorkoutModal() {
-        const addWorkoutForm = document.getElementById('addWorkoutForm');
-        const addWorkoutModal = document.getElementById('addWorkoutModal');
-        if (!addWorkoutForm || !addWorkoutModal) return;
-
-        // Set default date/time when modal opens
-        addWorkoutModal.addEventListener('show.bs.modal', () => {
-            const dateInput = document.getElementById('new_date');
-            if (dateInput && !dateInput.value) {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                dateInput.value = now.toISOString().slice(0, 16);
-            }
-            document.getElementById('addWorkoutFeedback').innerHTML = '';
-        });
-
-        addWorkoutForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const feedback = document.getElementById('addWorkoutFeedback');
-            const saveBtn = document.getElementById('saveWorkoutBtn');
-            feedback.innerHTML = '';
-
-            const payload = {
-                activity:  document.getElementById('new_activity').value.trim(),
-                type:      document.getElementById('new_type').value,
-                intensity: document.getElementById('new_intensity').value,
-                status:    document.getElementById('new_status').value,
-                calories:  parseInt(document.getElementById('new_calories').value, 10),
-                duration:  parseInt(document.getElementById('new_duration').value, 10),
-                date:      document.getElementById('new_date').value.replace('T', ' ') + ':00',
-                notes:     document.getElementById('new_notes').value.trim() || null
-            };
-
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
-
-            const created = await this.dataManager.addWorkout(payload);
-
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="bi bi-save"></i> Save Workout';
-
-            if (created) {
-                const modal = bootstrap.Modal.getInstance(addWorkoutModal);
-                modal?.hide();
-                addWorkoutForm.reset();
-
-                this.applyFiltersAndUpdate();
-                this.updateLiveIndicator('Workout Added!', true);
-                setTimeout(() => this.updateLiveIndicator('Live', true), 2000);
-            } else {
-                feedback.innerHTML = `
-                    <div class="alert alert-danger" role="alert">
-                        Failed to save workout. Please check your inputs and try again.
-                    </div>
-                `;
-            }
-        });
-    }
-
-    /**
-     * Delete a workout
-     */
-    async deleteWorkout(id) {
-        if (!confirm('Delete this workout?')) return;
-
-        const ok = await this.dataManager.deleteWorkout(id);
-        if (ok) {
-            this.applyFiltersAndUpdate();
-            this.updateLiveIndicator('Deleted', true);
-            setTimeout(() => this.updateLiveIndicator('Live', true), 1500);
-        } else {
-            alert('Failed to delete workout.');
-        }
-    }
-
-    /**
-     * Apply filters and update all UI components
-     */
-    applyFiltersAndUpdate() {
-        this.dataManager.applyFilters();
-        this.updateStatistics();
-        this.renderAlerts();
-        this.renderCharts();
-        this.updateTable();
-        this.updateLiveIndicator('Updated', true);
-
-        setTimeout(() => {
-            this.updateLiveIndicator('Live', true);
-        }, 1500);
     }
 
     /**
@@ -693,16 +500,12 @@ class Dashboard {
             const csv = this.dataManager.exportToCSV(data);
             if (csv) {
                 this.dataManager.downloadCSV(csv);
-                this.updateLiveIndicator('Exported!', true);
-                setTimeout(() => {
-                    this.updateLiveIndicator('Live', true);
-                }, 2000);
             }
         });
     }
 
     /**
-     * Clean up charts (no intervals since real-time is removed)
+     * Clean up charts
      */
     destroy() {
         Object.keys(this.charts).forEach(key => {
