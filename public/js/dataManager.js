@@ -1,12 +1,9 @@
 /**
- * DataManager - Handles all data operations for the Fitness Tracker
- * Part 3: Creating the JavaScript Data Management System
+ * DataManager - Handles all data operations for the Fitness Tracker.
+ * Connected to Laravel API at /api/workouts.
  *
- * Connected to Laravel API at /api/workouts
- *  - GET    /api/workouts       -> list
- *  - POST   /api/workouts       -> create
- *  - PUT    /api/workouts/{id}  -> update
- *  - DELETE /api/workouts/{id}  -> delete
+ * Used by dashboard.js for read-only operations (stats, charts, export).
+ * Add / Edit / Delete operations now live in inventory.js.
  */
 
 class DataManager {
@@ -24,7 +21,7 @@ class DataManager {
     }
 
     /**
-     * CSRF token helper for write requests
+     * CSRF token helper (used by CSV / future write ops)
      */
     getCsrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -40,7 +37,8 @@ class DataManager {
             const res = await fetch('/api/workouts', {
                 headers: {
                     'Accept': 'application/json'
-                }
+                },
+                credentials: 'same-origin'
             });
 
             if (!res.ok) throw new Error('API error: ' + res.status);
@@ -270,96 +268,6 @@ class DataManager {
     }
 
     /**
-     * Add a new workout via API
-     * @param {Object} workout
-     * @returns {Object|null} the created workout or null on failure
-     */
-    async addWorkout(workout) {
-        try {
-            const res = await fetch('/api/workouts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': this.getCsrfToken()
-                },
-                body: JSON.stringify(workout)
-            });
-
-            if (!res.ok) {
-                const errText = await res.text();
-                console.error('addWorkout failed:', res.status, errText);
-                return null;
-            }
-
-            const created = await res.json();
-            created.date = created.date ? created.date.replace('T', ' ').slice(0, 16) : '';
-
-            this.workouts.unshift(created);
-            this.applyFilters();
-            return created;
-        } catch (err) {
-            console.error('addWorkout error:', err);
-            return null;
-        }
-    }
-
-    /**
-     * Update a workout via API
-     */
-    async updateWorkout(id, updates) {
-        try {
-            const res = await fetch(`/api/workouts/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': this.getCsrfToken()
-                },
-                body: JSON.stringify(updates)
-            });
-
-            if (!res.ok) throw new Error('Update failed');
-            const updated = await res.json();
-            updated.date = updated.date ? updated.date.replace('T', ' ').slice(0, 16) : '';
-
-            const index = this.workouts.findIndex(w => w.id === id);
-            if (index !== -1) {
-                this.workouts[index] = { ...this.workouts[index], ...updated };
-                this.applyFilters();
-            }
-            return updated;
-        } catch (err) {
-            console.error('updateWorkout error:', err);
-            return null;
-        }
-    }
-
-    /**
-     * Delete a workout via API
-     */
-    async deleteWorkout(id) {
-        try {
-            const res = await fetch(`/api/workouts/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': this.getCsrfToken()
-                }
-            });
-
-            if (!res.ok) throw new Error('Delete failed');
-
-            this.workouts = this.workouts.filter(w => w.id !== id);
-            this.applyFilters();
-            return true;
-        } catch (err) {
-            console.error('deleteWorkout error:', err);
-            return false;
-        }
-    }
-
-    /**
      * Export to CSV
      */
     exportToCSV(data = null) {
@@ -412,24 +320,6 @@ class DataManager {
         window.URL.revokeObjectURL(url);
 
         return true;
-    }
-
-    /**
-     * Simulate real-time updates (writes to DB via API)
-     */
-    async simulateRealTimeUpdate() {
-        const newWorkout = {
-            date: new Date().toISOString().replace('T', ' ').slice(0, 16) + ':00',
-            activity: ['Burpees', 'Jump Squats', 'Mountain Climbers', 'Lunges', 'Plank', 'Kettlebell Swings'][Math.floor(Math.random() * 6)],
-            type: ['cardio', 'strength', 'hiit', 'flexibility'][Math.floor(Math.random() * 4)],
-            intensity: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
-            status: Math.random() > 0.2 ? 'Completed' : (Math.random() > 0.5 ? 'Ongoing' : 'Failed'),
-            calories: Math.floor(Math.random() * 250) + 50,
-            duration: Math.floor(Math.random() * 35) + 10,
-            notes: 'Real-time update'
-        };
-
-        return await this.addWorkout(newWorkout);
     }
 
     /**

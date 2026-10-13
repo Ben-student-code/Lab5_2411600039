@@ -22,7 +22,14 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
+            <ul class="navbar-nav ms-auto align-items-center">
+                <li class="nav-item me-3">
+                    <a class="nav-link position-relative" href="#" id="notificationBell">
+                        <i class="bi bi-bell-fill fs-5 text-white"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              id="notificationCount" style="display:none;">0</span>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <span class="navbar-text text-white me-3">
                         Welcome, <span id="userName">{{ auth()->user()->name ?? 'User' }}</span>
@@ -41,6 +48,23 @@
     </div>
 </nav>
 
+{{-- Notification Dropdown Panel --}}
+<div id="notificationPanel" class="card shadow-lg border-0"
+     style="position:fixed;top:70px;right:20px;width:400px;max-height:500px;overflow-y:auto;display:none;z-index:1050;">
+    <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+        <h6 class="mb-0"><i class="bi bi-bell-fill"></i> Notifications</h6>
+        <button class="btn btn-sm btn-light" id="markAllRead">
+            <i class="bi bi-check2-all"></i> Mark all read
+        </button>
+    </div>
+    <div class="card-body p-0" id="notificationList">
+        <p class="text-center text-muted my-4">
+            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+            Loading...
+        </p>
+    </div>
+</div>
+
 <div class="container-fluid">
     <div class="row">
         <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar vh-100 p-3">
@@ -49,6 +73,17 @@
                     <li class="nav-item">
                         <a class="nav-link active" href="{{ route('dashboard') }}">
                             <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link shadow-hover" href="{{ route('inventory.index') }}">
+                            <i class="bi bi-box-seam-fill"></i> Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link shadow-hover" href="{{ route('notifications.index') }}">
+                            <i class="bi bi-bell-fill"></i> Notifications
+                            <span class="badge bg-danger ms-2" id="sidebarNotifCount" style="display:none;">0</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -77,13 +112,7 @@
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
                 <h2 id="greeting">Good Morning, User!</h2>
-                <div>
-                    <span class="badge bg-success me-2" id="liveIndicator">
-                        <i class="bi bi-circle-fill"></i> Live
-                    </span>
-                    <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addWorkoutModal">
-                        <i class="bi bi-plus-circle"></i> Add Workout
-                    </button>
+                 <div>
                     <button class="btn btn-outline-secondary btn-sm" id="exportBtn">
                         <i class="bi bi-download"></i> Export CSV
                     </button>
@@ -162,59 +191,7 @@
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-funnel-fill"></i> Filters & Search</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" class="form-control" id="searchInput" placeholder="Search workouts by name...">
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <select id="typeFilter" class="form-select">
-                                <option value="all">All Types</option>
-                                <option value="cardio">Cardio</option>
-                                <option value="strength">Strength</option>
-                                <option value="flexibility">Flexibility</option>
-                                <option value="hiit">HIIT</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select id="intensityFilter" class="form-select">
-                                <option value="all">All Intensity</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select id="statusFilter" class="form-select">
-                                <option value="all">All Status</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Ongoing">Ongoing</option>
-                                <option value="Failed">Failed</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select id="dateRangeFilter" class="form-select">
-                                <option value="all">All Time</option>
-                                <option value="today">Today</option>
-                                <option value="week">This Week</option>
-                                <option value="month">This Month</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <button class="btn btn-outline-secondary" id="resetFiltersBtn">
-                                <i class="bi bi-arrow-counterclockwise"></i> Reset All Filters
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {{-- Filters & Search REMOVED — now on /inventory --}}
 
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -233,7 +210,6 @@
                                     <th>Status</th>
                                     <th>Calories</th>
                                     <th>Duration</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="activityTableBody"></tbody>
@@ -245,94 +221,9 @@
     </div>
 </div>
 
-<!-- ============================ -->
-<!-- Add Workout Modal            -->
-<!-- ============================ -->
-<div class="modal fade" id="addWorkoutModal" tabindex="-1" aria-labelledby="addWorkoutModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form id="addWorkoutForm">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="addWorkoutModalLabel">
-                        <i class="bi bi-plus-circle"></i> Add New Workout
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="addWorkoutFeedback"></div>
-
-                    <div class="mb-3">
-                        <label for="new_activity" class="form-label">Activity Name</label>
-                        <input type="text" class="form-control" id="new_activity" name="activity"
-                               placeholder="e.g. Morning Jog" required maxlength="100">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="new_type" class="form-label">Type</label>
-                            <select class="form-select" id="new_type" name="type" required>
-                                <option value="cardio">Cardio</option>
-                                <option value="strength">Strength</option>
-                                <option value="flexibility">Flexibility</option>
-                                <option value="hiit">HIIT</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="new_intensity" class="form-label">Intensity</label>
-                            <select class="form-select" id="new_intensity" name="intensity" required>
-                                <option value="low">Low</option>
-                                <option value="medium" selected>Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="new_calories" class="form-label">Calories Burned</label>
-                            <input type="number" class="form-control" id="new_calories" name="calories"
-                                   min="0" max="5000" value="150" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="new_duration" class="form-label">Duration (min)</label>
-                            <input type="number" class="form-control" id="new_duration" name="duration"
-                                   min="1" max="600" value="30" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="new_status" class="form-label">Status</label>
-                        <select class="form-select" id="new_status" name="status" required>
-                            <option value="Completed" selected>Completed</option>
-                            <option value="Ongoing">Ongoing</option>
-                            <option value="Failed">Failed</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="new_date" class="form-label">Date & Time</label>
-                        <input type="datetime-local" class="form-control" id="new_date" name="date" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="new_notes" class="form-label">Notes (optional)</label>
-                        <textarea class="form-control" id="new_notes" name="notes" rows="2"
-                                  placeholder="e.g. 3 sets of 20 reps" maxlength="500"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="saveWorkoutBtn">
-                        <i class="bi bi-save"></i> Save Workout
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ asset('js/dataManager.js') }}"></script>
 <script src="{{ asset('js/dashboard.js') }}"></script>
+<script src="{{ asset('js/notificationBell.js') }}"></script>
 </body>
 </html>
