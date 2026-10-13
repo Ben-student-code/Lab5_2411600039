@@ -61,7 +61,7 @@ class WorkoutController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        $data = $request->validate([
+        $data = $request->validate([   
             'activity'  => 'sometimes|string|max:100',
             'type'      => 'sometimes|in:cardio,strength,flexibility,hiit',
             'intensity' => 'sometimes|in:low,medium,high',
